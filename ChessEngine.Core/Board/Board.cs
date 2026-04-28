@@ -28,6 +28,20 @@ public class Board
         LoadFEN(fen);
     }
 
+    public Board Clone()
+    {
+        var clone = new Board();
+        clone.Squares = (int[])Squares.Clone();
+        clone.ColorToMove = ColorToMove;
+        clone.EnPassantFile = EnPassantFile;
+        clone.CastlingRights = (bool[])CastlingRights.Clone();
+        clone.HalfMoveClock = HalfMoveClock;
+        clone.FullMoveNumber = FullMoveNumber;
+        clone.WhiteKingSquare = WhiteKingSquare;
+        clone.BlackKingSquare = BlackKingSquare;
+        return clone;
+    }
+
     // FEN Parsing and Generation
 
     public void LoadFEN(string fen)

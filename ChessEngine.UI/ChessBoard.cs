@@ -1,7 +1,9 @@
 using System.Drawing;
 using System.Windows.Forms;
 using ChessEngine.Core.Board;
+using ChessEngine.Core.Evaluation;
 using ChessEngine.Core.MoveGen;
+using ChessEngine.Core.Search;
 using Svg;
 
 namespace ChessEngine.UI;
@@ -24,6 +26,8 @@ public class ChessBoard : Form
     private int _selectedSquare = -1;
     private List<Move> _legalMovesCache = new();
     private List<int> _highlightSquares = new();
+
+    private bool engineThinking = false;
 
     public ChessBoard()
     {
@@ -246,41 +250,53 @@ public class ChessBoard : Form
     }
 
 
-    private void OnMouseClick(object? sender, MouseEventArgs e)
+    private async void OnMouseClick(object? sender, MouseEventArgs e)
     {
-        int file = e.X / SquareSize;
-        int rank = 7 - (e.Y / SquareSize);
-        int square = BoardHelper.SquareIndex(file, rank);
-
-        if (file < 0 || file > 7 || rank < 0 || rank > 7) return;
-
-        if (_legalMovesCache.Count == 0) return;
-
-        if (_selectedSquare == -1)
+        if (!engineThinking)
         {
-            TrySelectSquare(square);
-        }
-        else
-        {
-            if (square == _selectedSquare)
-            {
-                Deselect();
-            }
-            else if (_highlightSquares.Contains(square))
-            {
-                MakeMove(square);
-            }
-            else if (_board.Squares[square] != Piece.None
-                  && Piece.IsColor(_board.Squares[square], _board.ColorToMove))
+
+            int file = e.X / SquareSize;
+            int rank = 7 - (e.Y / SquareSize);
+            int square = BoardHelper.SquareIndex(file, rank);
+
+            if (file < 0 || file > 7 || rank < 0 || rank > 7) return;
+
+            if (_legalMovesCache.Count == 0) return;
+
+            if (_selectedSquare == -1)
             {
                 TrySelectSquare(square);
             }
             else
             {
-                Deselect();
+                if (square == _selectedSquare)
+                {
+                    Deselect();
+                }
+                else if (_highlightSquares.Contains(square))
+                {
+                    MakeMove(square);
+
+                    if (!isGameOver())
+                    {
+                        engineThinking = true;
+                        Move engineMove = await Task.Run(() => findEngineBestMove(_board.Clone()));
+
+                        MakeEngineMove(engineMove);
+                        engineThinking = false;
+                    }
+                }
+                else if (_board.Squares[square] != Piece.None
+                      && Piece.IsColor(_board.Squares[square], _board.ColorToMove))
+                {
+                    TrySelectSquare(square);
+                }
+                else
+                {
+                    Deselect();
+                }
             }
         }
-
         Invalidate();
     }
 
@@ -307,6 +323,28 @@ public class ChessBoard : Form
         _legalMovesCache = _moveGenerator.GenerateLegalMoves(_board);
         _selectedSquare = -1;
         _highlightSquares = new();
+    }
+
+    private void MakeEngineMove(Move move)
+    {
+        _board.MakeMove(move);
+        _legalMovesCache = _moveGenerator.GenerateLegalMoves(_board);
+        _selectedSquare = -1;
+        _highlightSquares = new();
+    }
+
+    private Move findEngineBestMove(Board board)
+    {
+
+        Searcher searcher = new Searcher(board);
+
+        return searcher.FindBestMove(1);
+    }
+
+    private bool isGameOver()
+    {
+        return _legalMovesCache.Count == 0;
+
     }
 
     private void Deselect()
