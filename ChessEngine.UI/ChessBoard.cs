@@ -1,7 +1,4 @@
-using System.Drawing;
-using System.Windows.Forms;
 using ChessEngine.Core.Board;
-using ChessEngine.Core.Evaluation;
 using ChessEngine.Core.MoveGen;
 using ChessEngine.Core.Search;
 using Svg;
@@ -108,7 +105,9 @@ public class ChessBoard : Form
                                         : DarkSquare;
 
                 if (isLegal)
+                {
                     color = Blend(color, Color.FromArgb(255, 255, 255, 0), 0.35f);
+                }
 
                 int x = file * SquareSize;
                 int y = (7 - rank) * SquareSize;
@@ -119,7 +118,10 @@ public class ChessBoard : Form
 
     private void DrawLegalMoveDots(Graphics g)
     {
-        if (_selectedSquare == -1) return;
+        if (_selectedSquare == -1)
+        {
+            return;
+        }
 
         int dotSize = SquareSize / 4;
         int offset = (SquareSize - dotSize) / 2;
@@ -157,10 +159,16 @@ public class ChessBoard : Form
         for (int sq = 0; sq < 64; sq++)
         {
             int piece = _board.Squares[sq];
-            if (piece == Piece.None) continue;
+            if (piece == Piece.None)
+            {
+                continue;
+            }
 
             string key = Piece.ToImageKey(piece);
-            if (!_pieceImages.TryGetValue(key, out Bitmap? bmp)) continue;
+            if (!_pieceImages.TryGetValue(key, out Bitmap? bmp))
+            {
+                continue;
+            }
 
             int file = BoardHelper.FileOf(sq);
             int rank = BoardHelper.RankOf(sq);
@@ -238,13 +246,21 @@ public class ChessBoard : Form
 
         string status;
         if (noMoves && inCheck)
+        {
             status = isWhiteTurn ? "Black wins by checkmate!" : "White wins by checkmate!";
+        }
         else if (noMoves)
+        {
             status = "Stalemate — draw!";
+        }
         else if (inCheck)
+        {
             status = (isWhiteTurn ? "White" : "Black") + " is in check!";
+        }
         else
+        {
             status = (isWhiteTurn ? "White" : "Black") + " to move";
+        }
 
         Text = $"Chess Engine — {status}";
     }
@@ -259,9 +275,15 @@ public class ChessBoard : Form
             int rank = 7 - (e.Y / SquareSize);
             int square = BoardHelper.SquareIndex(file, rank);
 
-            if (file < 0 || file > 7 || rank < 0 || rank > 7) return;
+            if (file < 0 || file > 7 || rank < 0 || rank > 7)
+            {
+                return;
+            }
 
-            if (_legalMovesCache.Count == 0) return;
+            if (_legalMovesCache.Count == 0)
+            {
+                return;
+            }
 
             if (_selectedSquare == -1)
             {
@@ -303,7 +325,10 @@ public class ChessBoard : Form
     private void TrySelectSquare(int square)
     {
         int piece = _board.Squares[square];
-        if (piece == Piece.None || !Piece.IsColor(piece, _board.ColorToMove)) return;
+        if (piece == Piece.None || !Piece.IsColor(piece, _board.ColorToMove))
+        {
+            return;
+        }
 
         _selectedSquare = square;
         _highlightSquares = _legalMovesCache
@@ -336,9 +361,9 @@ public class ChessBoard : Form
     private Move findEngineBestMove(Board board)
     {
 
-        Searcher searcher = new Searcher(board);
+        Searcher searcher = new(board);
 
-        return searcher.FindBestMove(1);
+        return searcher.FindBestMove(4);
     }
 
     private bool isGameOver()
@@ -351,6 +376,11 @@ public class ChessBoard : Form
     {
         _selectedSquare = -1;
         _highlightSquares = new();
+    }
+
+    private void InitializeComponent()
+    {
+
     }
 
     private static Color Blend(Color c1, Color c2, float ratio) =>
