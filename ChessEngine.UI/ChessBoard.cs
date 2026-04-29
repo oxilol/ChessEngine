@@ -363,7 +363,10 @@ public class ChessBoard : Form
 
         Searcher searcher = new(board);
 
-        return searcher.FindBestMove(4);
+        Move move = searcher.FindBestMove(5);
+        Console.Error.WriteLine($"Nodes searched: {searcher.NodesSearched}");
+
+        return move;
     }
 
     private bool isGameOver()

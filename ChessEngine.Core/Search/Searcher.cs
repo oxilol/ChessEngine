@@ -9,17 +9,27 @@ public class Searcher
     private readonly Board.Board _board;
     private readonly MoveGenerator _moveGenerator;
     private readonly Evaluator _evaluator;
+    private readonly MoveOrdering _moveOrdering;
+
+    public int NodesSearched = 0;
 
     public Searcher(Board.Board board)
     {
         _board = board;
         _moveGenerator = new MoveGenerator();
         _evaluator = new Evaluator();
+        _moveOrdering = new MoveOrdering();
     }
+
+    // Algorithm : https://www.chessprogramming.org/Alpha-Beta
 
     public Move FindBestMove(int depth)
     {
+        NodesSearched = 0;
+
         List<Move> legalMoves = _moveGenerator.GenerateLegalMoves(_board);
+
+        legalMoves = _moveOrdering.OrderMoves(legalMoves, _board);
 
         int currentBestMoveIndex = 0;
         int currentBestScore = int.MinValue + 1;
@@ -61,13 +71,17 @@ public class Searcher
 
     public int Search(int depth, int alpha, int beta)
     {
+        NodesSearched++;
+
         // reached the bottom, evaluate the position
         if (depth == 0)
         {
-            return _evaluator.Evaluate(_board);
+            return Quiesce(alpha, beta);
         }
 
         List<Move> legalMoves = _moveGenerator.GenerateLegalMoves(_board);
+
+        legalMoves = _moveOrdering.OrderMoves(legalMoves, _board);
 
         // if no move, either a checkmate or a stalemate
         if (legalMoves.Count == 0)
@@ -98,5 +112,57 @@ public class Searcher
 
         // return the best score
         return alpha;
+    }
+
+    // ref : https://www.chessprogramming.org/Quiescence_Search
+    int Quiesce(int alpha, int beta)
+    {
+        int static_eval = _evaluator.Evaluate(_board);
+
+        // Stand Pat
+        int best_value = static_eval;
+        if (best_value >= beta)
+        {
+            return best_value;
+        }
+
+        if (best_value > alpha)
+        {
+            alpha = best_value;
+        }
+
+        List<Move> legalMoves = _moveGenerator.GenerateLegalMoves(_board);
+
+        List<Move> captureMoves = legalMoves
+            .Where(move => _board.Squares[move.To] != Piece.None)
+            .OrderByDescending(move => _moveOrdering.ScoreMove(move, _board))
+            .ToList();
+
+        for (int i = 0; i < captureMoves.Count(); i++)
+        {
+
+            _board.MakeMove(captureMoves[i]);
+
+            int score = -Quiesce(-beta, -alpha);
+
+            _board.UnmakeMove(captureMoves[i]);
+
+            if (score >= beta)
+            {
+                return score;
+            }
+
+            if (score > best_value)
+            {
+                best_value = score;
+            }
+
+            if (score > alpha)
+            {
+                alpha = score;
+            }
+        }
+
+        return best_value;
     }
 }
