@@ -74,6 +74,13 @@ public class Searcher
     {
         NodesSearched++;
 
+        bool inCheck = _moveGenerator.IsInCheck(_board, _board.ColorToMove);
+
+        if (inCheck)
+        {
+            depth++;
+        }
+
         // reached the bottom, evaluate the position
         if (depth == 0)
         {
@@ -87,7 +94,7 @@ public class Searcher
         // if no move, either a checkmate or a stalemate
         if (legalMoves.Count == 0)
         {
-            bool inCheck = _moveGenerator.IsInCheck(_board, _board.ColorToMove);
+            inCheck = _moveGenerator.IsInCheck(_board, _board.ColorToMove);
             return inCheck ? -(100000 - depth) : 0;
         }
 
@@ -116,7 +123,7 @@ public class Searcher
     }
 
     // ref : https://www.chessprogramming.org/Quiescence_Search
-    int Quiesce(int alpha, int beta, bool isEndgame)
+    private int Quiesce(int alpha, int beta, bool isEndgame)
     {
         int static_eval = _evaluator.Evaluate(_board, isEndgame);
 
@@ -135,7 +142,7 @@ public class Searcher
         List<Move> legalMoves = _moveGenerator.GenerateLegalMoves(_board);
 
         List<Move> captureMoves = legalMoves
-            .Where(move => _board.Squares[move.To] != Piece.None)
+            .Where(move => _board.Squares[move.To] != Piece.None || IsCheckingMove(move))
             .OrderByDescending(move => _moveOrdering.ScoreMove(move, _board))
             .ToList();
 
@@ -165,5 +172,13 @@ public class Searcher
         }
 
         return best_value;
+    }
+
+    private bool IsCheckingMove(Move move)
+    {
+        _board.MakeMove(move);
+        bool isCheck = _moveGenerator.IsInCheck(_board, _board.ColorToMove);
+        _board.UnmakeMove(move);
+        return isCheck;
     }
 }
