@@ -26,6 +26,7 @@ public class Searcher
     public Move FindBestMove(int depth)
     {
         NodesSearched = 0;
+        bool isEndgame = _evaluator.IsEndgame(_board);
 
         List<Move> legalMoves = _moveGenerator.GenerateLegalMoves(_board);
 
@@ -42,7 +43,7 @@ public class Searcher
             _board.MakeMove(legalMoves[i]);
 
             // opponents alpha is my beta and his beta is my alpha
-            int score = -Search(depth - 1, -beta, -alpha); // negate because it's now opponent's turn
+            int score = -Search(depth - 1, -beta, -alpha, isEndgame); // negate because it's now opponent's turn
 
             _board.UnmakeMove(legalMoves[i]);
 
@@ -69,14 +70,14 @@ public class Searcher
         return legalMoves[currentBestMoveIndex];
     }
 
-    public int Search(int depth, int alpha, int beta)
+    public int Search(int depth, int alpha, int beta, bool isEndgame)
     {
         NodesSearched++;
 
         // reached the bottom, evaluate the position
         if (depth == 0)
         {
-            return Quiesce(alpha, beta);
+            return Quiesce(alpha, beta, isEndgame);
         }
 
         List<Move> legalMoves = _moveGenerator.GenerateLegalMoves(_board);
@@ -87,14 +88,14 @@ public class Searcher
         if (legalMoves.Count == 0)
         {
             bool inCheck = _moveGenerator.IsInCheck(_board, _board.ColorToMove);
-            return inCheck ? -100000 : 0;
+            return inCheck ? -(100000 - depth) : 0;
         }
 
         for (int i = 0; i < legalMoves.Count(); i++)
         {
             // try first move, go one level deeper
             _board.MakeMove(legalMoves[i]);
-            int score = -Search(depth - 1, -beta, -alpha); // negate because sides flip and switch beta and alpha
+            int score = -Search(depth - 1, -beta, -alpha, isEndgame); // negate because sides flip and switch beta and alpha
             _board.UnmakeMove(legalMoves[i]);
 
             // this move is too good — opponent would have avoided this position
@@ -115,9 +116,9 @@ public class Searcher
     }
 
     // ref : https://www.chessprogramming.org/Quiescence_Search
-    int Quiesce(int alpha, int beta)
+    int Quiesce(int alpha, int beta, bool isEndgame)
     {
-        int static_eval = _evaluator.Evaluate(_board);
+        int static_eval = _evaluator.Evaluate(_board, isEndgame);
 
         // Stand Pat
         int best_value = static_eval;
@@ -143,7 +144,7 @@ public class Searcher
 
             _board.MakeMove(captureMoves[i]);
 
-            int score = -Quiesce(-beta, -alpha);
+            int score = -Quiesce(-beta, -alpha, isEndgame);
 
             _board.UnmakeMove(captureMoves[i]);
 

@@ -16,25 +16,25 @@ public static class Piece
     public const int Black = 0b10000;
 
     // Combined pieces
-    public const int WhitePawn   = White | Pawn;
+    public const int WhitePawn = White | Pawn;
     public const int WhiteKnight = White | Knight;
     public const int WhiteBishop = White | Bishop;
-    public const int WhiteRook   = White | Rook;
-    public const int WhiteQueen  = White | Queen;
-    public const int WhiteKing   = White | King;
-    public const int BlackPawn   = Black | Pawn;
+    public const int WhiteRook = White | Rook;
+    public const int WhiteQueen = White | Queen;
+    public const int WhiteKing = White | King;
+    public const int BlackPawn = Black | Pawn;
     public const int BlackKnight = Black | Knight;
     public const int BlackBishop = Black | Bishop;
-    public const int BlackRook   = Black | Rook;
-    public const int BlackQueen  = Black | Queen;
-    public const int BlackKing   = Black | King;
+    public const int BlackRook = Black | Rook;
+    public const int BlackQueen = Black | Queen;
+    public const int BlackKing = Black | King;
 
-    public static int GetType(int piece)  => piece & 0b00111; 
+    public static int GetType(int piece) => piece & 0b00111;
     public static int GetColor(int piece) => piece & 0b11000;
     public static bool IsWhite(int piece) => (piece & White) != 0;
     public static bool IsBlack(int piece) => (piece & Black) != 0;
     public static bool IsColor(int piece, int color) => GetColor(piece) == color;
-    public static bool IsType(int piece, int type)   => GetType(piece) == type;
+    public static bool IsType(int piece, int type) => GetType(piece) == type;
     public static int OppositeColor(int color) => color == White ? Black : White;
 
     public static int FromChar(char c)
@@ -71,12 +71,27 @@ public static class Piece
         }
     }
 
+    public static int GetValue(int piece) => GetType(piece) switch
+    {
+        Pawn => 100,
+        Knight => 320,
+        Bishop => 330,
+        Rook => 500,
+        Queen => 900,
+        King => 20000,
+        _ => 0
+    };
+
     // Maps to the UI image filename like "wK" or "bP"
     public static string ToImageKey(int piece)
     {
-        if (piece == None) return "";
+        if (piece == None)
+        {
+            return "";
+        }
+
         char color = IsWhite(piece) ? 'w' : 'b';
-        char type  = char.ToUpper(ToChar(piece));
+        char type = char.ToUpper(ToChar(piece));
         return $"{color}{type}";
     }
 }

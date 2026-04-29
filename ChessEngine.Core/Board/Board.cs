@@ -75,8 +75,15 @@ public class Board
                 int piece = Piece.FromChar(c);
                 Squares[square] = piece;
 
-                if (piece == Piece.WhiteKing) WhiteKingSquare = square;
-                if (piece == Piece.BlackKing) BlackKingSquare = square;
+                if (piece == Piece.WhiteKing)
+                {
+                    WhiteKingSquare = square;
+                }
+
+                if (piece == Piece.BlackKing)
+                {
+                    BlackKingSquare = square;
+                }
 
                 file++;
             }
@@ -216,8 +223,15 @@ public class Board
         Squares[from] = Piece.None;
 
         // Update king position
-        if (piece == Piece.WhiteKing) WhiteKingSquare = to;
-        if (piece == Piece.BlackKing) BlackKingSquare = to;
+        if (piece == Piece.WhiteKing)
+        {
+            WhiteKingSquare = to;
+        }
+
+        if (piece == Piece.BlackKing)
+        {
+            BlackKingSquare = to;
+        }
 
         // Handle en passant capture
         if (Piece.IsType(piece, Piece.Pawn) && to == EnPassantCaptureSquare())
@@ -245,7 +259,9 @@ public class Board
 
         // Handle promotion
         if (move.IsPromotion)
+        {
             Squares[to] = Piece.GetColor(piece) | move.PromoPiece;
+        }
 
         // Update en passant file
         bool isDoublePawnPush = Piece.IsType(piece, Piece.Pawn)
@@ -269,14 +285,21 @@ public class Board
         HalfMoveClock = (isCapture || isPawnMove) ? 0 : HalfMoveClock + 1;
 
         // Update FullMoveNumber
-        if (ColorToMove == Piece.Black) FullMoveNumber++;
+        if (ColorToMove == Piece.Black)
+        {
+            FullMoveNumber++;
+        }
+
         ColorToMove = Piece.OppositeColor(ColorToMove);
     }
 
     public void UnmakeMove(Move move)
     {
         ColorToMove = Piece.OppositeColor(ColorToMove);
-        if (ColorToMove == Piece.Black) FullMoveNumber--;
+        if (ColorToMove == Piece.Black)
+        {
+            FullMoveNumber--;
+        }
 
         GameState state = _history.Pop();
 
@@ -287,7 +310,9 @@ public class Board
 
         // Restore piece (undo promotion first)
         if (move.IsPromotion)
+        {
             piece = color | Piece.Pawn;
+        }
 
         Squares[from] = piece;
         Squares[to] = state.CapturedPiece;
@@ -337,7 +362,11 @@ public class Board
 
     private int EnPassantCaptureSquare()
     {
-        if (EnPassantFile == -1) return -1;
+        if (EnPassantFile == -1)
+        {
+            return -1;
+        }
+
         int rank = ColorToMove == Piece.White ? 5 : 2;
         return BoardHelper.SquareIndex(EnPassantFile, rank);
     }
@@ -349,10 +378,25 @@ public class Board
         if (from == 60) { CastlingRights[2] = false; CastlingRights[3] = false; } // black king
 
         // If a rook moves or is captured, lose that specific right
-        if (from == 7 || to == 7) CastlingRights[0] = false; // white kingside rook
-        if (from == 0 || to == 0) CastlingRights[1] = false; // white queenside rook
-        if (from == 63 || to == 63) CastlingRights[2] = false; // black kingside rook
-        if (from == 56 || to == 56) CastlingRights[3] = false; // black queenside rook
+        if (from == 7 || to == 7)
+        {
+            CastlingRights[0] = false; // white kingside rook
+        }
+
+        if (from == 0 || to == 0)
+        {
+            CastlingRights[1] = false; // white queenside rook
+        }
+
+        if (from == 63 || to == 63)
+        {
+            CastlingRights[2] = false; // black kingside rook
+        }
+
+        if (from == 56 || to == 56)
+        {
+            CastlingRights[3] = false; // black queenside rook
+        }
     }
 
     public int KingSquare(int color) =>

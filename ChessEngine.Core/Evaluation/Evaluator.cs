@@ -4,7 +4,7 @@ namespace ChessEngine.Core.Evaluation;
 
 public class Evaluator
 {
-    public int Evaluate(Board.Board board)
+    public int Evaluate(Board.Board board, bool isEndgame)
     {
 
         int whiteEvaluation = 0;
@@ -19,15 +19,15 @@ public class Evaluator
                 continue;
             }
 
-            int value = GetPieceValue(piece);
+            int bonus = PieceSquareTable.GetBonus(piece, i, isEndgame);
 
             if (Piece.IsWhite(piece))
             {
-                whiteEvaluation += value;
+                whiteEvaluation += Piece.GetValue(piece) + bonus;
             }
             else
             {
-                blackEvaluation += value;
+                blackEvaluation += Piece.GetValue(piece) + bonus;
             }
         }
 
@@ -38,13 +38,27 @@ public class Evaluator
 
     }
 
-    public int GetPieceValue(int piece) => Piece.GetType(piece) switch
+    public bool IsEndgame(Board.Board board)
     {
-        Piece.Pawn => 100,
-        Piece.Knight => 300,
-        Piece.Bishop => 320,
-        Piece.Rook => 500,
-        Piece.Queen => 900,
-        _ => 0
-    };
+        bool noQueens = !board.Squares.Any(p => Piece.GetType(p) == Piece.Queen);
+        int material = CountMaterial(board);
+        return noQueens || material < 2000;
+    }
+
+    public int CountMaterial(Board.Board board)
+    {
+        int total = 0;
+
+        for (int i = 0; i < board.Squares.Length; i++)
+        {
+            int currentValue = Piece.GetValue(board.Squares[i]);
+
+            if (currentValue != 0)
+            {
+                total += currentValue;
+            }
+        }
+
+        return total;
+    }
 }
