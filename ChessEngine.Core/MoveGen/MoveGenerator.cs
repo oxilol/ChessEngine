@@ -2,6 +2,10 @@ using ChessEngine.Core.Board;
 
 namespace ChessEngine.Core.MoveGen;
 
+//https://www.chessprogramming.org/Move_Generation
+
+// This class is for generating all legal moves in a certain position. It allows the engine to
+// have a list of moves to search through.
 public class MoveGenerator
 {
     private static readonly int[] KnightOffsets = { -17, -15, -10, -6, 6, 10, 15, 17 };
@@ -27,6 +31,8 @@ public class MoveGenerator
         return _moves;
     }
 
+    // Pseudo legal moves are all moves theoretically possible for a piece, without considering checks. 
+    // faster to generate pseudo legal moves first and then check if they leaves the king in check (illegal)
     private void GeneratePseudoLegalMoves()
     {
         for (int sq = 0; sq < 64; sq++)
@@ -34,7 +40,10 @@ public class MoveGenerator
             int piece = _board.Squares[sq];
 
             //skip empty squares and opponent pieces
-            if (piece == Piece.None || !Piece.IsColor(piece, _color)) continue;
+            if (piece == Piece.None || !Piece.IsColor(piece, _color))
+            {
+                continue;
+            }
 
             switch (Piece.GetType(piece))
             {
@@ -58,16 +67,25 @@ public class MoveGenerator
         foreach (int offset in KnightOffsets)
         {
             int to = from + offset;
-            if (!BoardHelper.IsValidSquare(to)) continue;
+            if (!BoardHelper.IsValidSquare(to))
+            {
+                continue;
+            }
 
             // Guard against wrap-around
-            if (Math.Abs(BoardHelper.FileOf(to) - fromFile) > 2) continue;
+            if (Math.Abs(BoardHelper.FileOf(to) - fromFile) > 2)
+            {
+                continue;
+            }
 
             int target = _board.Squares[to];
 
             // add to list if moves to an empty square or capture an opponent piece
+            // illegal if friendly pawn already there
             if (target == Piece.None || Piece.IsColor(target, _opponentColor))
+            {
                 _moves.Add(new Move(from, to));
+            }
         }
     }
 
@@ -85,22 +103,32 @@ public class MoveGenerator
                 int prevFile = BoardHelper.FileOf(sq);
                 sq += dir;
 
-                if (!BoardHelper.IsValidSquare(sq)) break;
+                if (!BoardHelper.IsValidSquare(sq))
+                {
+                    break;
+                }
 
                 // Prevent wrap-around
-                if (Math.Abs(BoardHelper.FileOf(sq) - prevFile) > 1) break;
+                if (Math.Abs(BoardHelper.FileOf(sq) - prevFile) > 1)
+                {
+                    break;
+                }
 
                 int target = _board.Squares[sq];
 
                 if (target == Piece.None)
                 {
+                    // if no piece is there, its a valid move
                     _moves.Add(new Move(from, sq));
                 }
                 else
                 {
-                    // Can capture opponent piece but must stop
+                    // if there is an enemy piece, its a valid move but must capture and stop
                     if (Piece.IsColor(target, _opponentColor))
+                    {
                         _moves.Add(new Move(from, sq));
+                    }
+
                     break;
                 }
             }
@@ -114,23 +142,35 @@ public class MoveGenerator
         foreach (int offset in KingOffsets)
         {
             int to = from + offset;
-            if (!BoardHelper.IsValidSquare(to)) continue;
+            if (!BoardHelper.IsValidSquare(to))
+            {
+                continue;
+            }
 
-            if (Math.Abs(BoardHelper.FileOf(to) - fromFile) > 1) continue;
+            if (Math.Abs(BoardHelper.FileOf(to) - fromFile) > 1)
+            {
+                continue;
+            }
 
             int target = _board.Squares[to];
 
             if (target == Piece.None || Piece.IsColor(target, _opponentColor))
+            {
                 _moves.Add(new Move(from, to));
+            }
         }
 
+        // Special castling moves
         GenerateCastlingMoves(from);
     }
 
     private void GenerateCastlingMoves(int kingSquare)
     {
         // King must not currently be in check
-        if (IsSquareAttacked(kingSquare, _opponentColor)) return;
+        if (IsSquareAttacked(kingSquare, _opponentColor))
+        {
+            return;
+        }
 
         if (_color == Piece.White)
         {
@@ -139,7 +179,9 @@ public class MoveGenerator
                 && _board.Squares[5] == Piece.None
                 && _board.Squares[6] == Piece.None
                 && !IsSquareAttacked(5, _opponentColor))
+            {
                 _moves.Add(new Move(kingSquare, kingSquare + 2));
+            }
 
             // Queenside (e1 to c1)
             if (_board.CastlingRights[1]
@@ -147,7 +189,9 @@ public class MoveGenerator
                 && _board.Squares[2] == Piece.None
                 && _board.Squares[1] == Piece.None
                 && !IsSquareAttacked(3, _opponentColor))
+            {
                 _moves.Add(new Move(kingSquare, kingSquare - 2));
+            }
         }
         else
         {
@@ -156,7 +200,9 @@ public class MoveGenerator
                 && _board.Squares[61] == Piece.None
                 && _board.Squares[62] == Piece.None
                 && !IsSquareAttacked(61, _opponentColor))
+            {
                 _moves.Add(new Move(kingSquare, kingSquare + 2));
+            }
 
             // Queenside (e8 to c8)
             if (_board.CastlingRights[3]
@@ -164,7 +210,9 @@ public class MoveGenerator
                 && _board.Squares[58] == Piece.None
                 && _board.Squares[57] == Piece.None
                 && !IsSquareAttacked(59, _opponentColor))
+            {
                 _moves.Add(new Move(kingSquare, kingSquare - 2));
+            }
         }
     }
 
@@ -181,29 +229,43 @@ public class MoveGenerator
         if (BoardHelper.IsValidSquare(onePush) && _board.Squares[onePush] == Piece.None)
         {
             if (BoardHelper.RankOf(onePush) == promoRank)
+            {
+                // pawn can promote when it reaches the last rank
                 AddPromotions(from, onePush);
+            }
             else
             {
                 _moves.Add(new Move(from, onePush));
 
-                // Double push
+                // if single push is legal and pawn is still on it's first rank, try double push
                 if (rank == startRank)
                 {
                     int twoPush = onePush + dir * 8;
                     if (_board.Squares[twoPush] == Piece.None)
+                    {
                         _moves.Add(new Move(from, twoPush));
+                    }
                 }
             }
         }
 
         // Captures
-        foreach (int captureFileDelta in new[] { -1, 1 })
+        foreach (int captureFileIndex in new[] { -1, 1 })
         {
-            int captureFile = file + captureFileDelta;
-            if (captureFile < 0 || captureFile > 7) continue;
+            int captureFile = file + captureFileIndex;
 
-            int captureSq = from + dir * 8 + captureFileDelta;
-            if (!BoardHelper.IsValidSquare(captureSq)) continue;
+            // skip edge of board
+            if (captureFile < 0 || captureFile > 7)
+            {
+                continue;
+            }
+
+            int captureSq = from + dir * 8 + captureFileIndex;
+
+            if (!BoardHelper.IsValidSquare(captureSq))
+            {
+                continue;
+            }
 
             int target = _board.Squares[captureSq];
 
@@ -211,9 +273,13 @@ public class MoveGenerator
             if (target != Piece.None && Piece.IsColor(target, _opponentColor))
             {
                 if (BoardHelper.RankOf(captureSq) == promoRank)
+                {
                     AddPromotions(from, captureSq);
+                }
                 else
+                {
                     _moves.Add(new Move(from, captureSq));
+                }
             }
 
             // En passant
@@ -221,21 +287,26 @@ public class MoveGenerator
             {
                 int epRank = _color == Piece.White ? 4 : 3;
                 if (rank == epRank)
+                {
                     _moves.Add(new Move(from, captureSq));
+                }
             }
         }
     }
 
     private void AddPromotions(int from, int to)
     {
+        // Normal pawn move but piece becomes either queen, rook, bishop, or knight
         _moves.Add(new Move(from, to, Piece.Queen));
         _moves.Add(new Move(from, to, Piece.Rook));
         _moves.Add(new Move(from, to, Piece.Bishop));
         _moves.Add(new Move(from, to, Piece.Knight));
     }
 
+    // Remove all moves that leave the king in check
     private void FilterIllegalMoves()
     {
+        // back ward iteration to be able to remove from the list
         for (int i = _moves.Count - 1; i >= 0; i--)
         {
             _board.MakeMove(_moves[i]);
@@ -247,22 +318,39 @@ public class MoveGenerator
 
             _board.UnmakeMove(_moves[i]);
 
-            if (inCheck) _moves.RemoveAt(i);
+            if (inCheck)
+            {
+                _moves.RemoveAt(i);
+            }
         }
     }
 
     public bool IsSquareAttacked(int square, int byColor)
     {
-        int byOpponent = Piece.OppositeColor(byColor);
+        return IsSquareAttackedOnBoard(_board, square, byColor);
+    }
 
+    public bool IsSquareAttackedOnBoard(Board.Board board, int square, int byColor)
+    {
         // Knight attacks
         int sqFile = BoardHelper.FileOf(square);
         foreach (int offset in KnightOffsets)
         {
             int sq = square + offset;
-            if (!BoardHelper.IsValidSquare(sq)) continue;
-            if (Math.Abs(BoardHelper.FileOf(sq) - sqFile) > 2) continue;
-            if (_board.Squares[sq] == (byColor | Piece.Knight)) return true;
+            if (!BoardHelper.IsValidSquare(sq))
+            {
+                continue;
+            }
+
+            if (Math.Abs(BoardHelper.FileOf(sq) - sqFile) > 2)
+            {
+                continue;
+            }
+
+            if (board.Squares[sq] == (byColor | Piece.Knight))
+            {
+                return true;
+            }
         }
 
         // Sliding attacks (rook/queen on ranks+files, bishop/queen on diagonals)
@@ -273,13 +361,28 @@ public class MoveGenerator
             {
                 int prevFile = BoardHelper.FileOf(sq);
                 sq += dir;
-                if (!BoardHelper.IsValidSquare(sq)) break;
-                if (Math.Abs(BoardHelper.FileOf(sq) - prevFile) > 1) break;
-                int piece = _board.Squares[sq];
-                if (piece == Piece.None) continue;
+                if (!BoardHelper.IsValidSquare(sq))
+                {
+                    break;
+                }
+
+                if (Math.Abs(BoardHelper.FileOf(sq) - prevFile) > 1)
+                {
+                    break;
+                }
+
+                int piece = board.Squares[sq];
+                if (piece == Piece.None)
+                {
+                    continue;
+                }
+
                 if (Piece.IsColor(piece, byColor)
                     && (Piece.IsType(piece, Piece.Rook) || Piece.IsType(piece, Piece.Queen)))
+                {
                     return true;
+                }
+
                 break;
             }
         }
@@ -291,13 +394,28 @@ public class MoveGenerator
             {
                 int prevFile = BoardHelper.FileOf(sq);
                 sq += dir;
-                if (!BoardHelper.IsValidSquare(sq)) break;
-                if (Math.Abs(BoardHelper.FileOf(sq) - prevFile) > 1) break;
-                int piece = _board.Squares[sq];
-                if (piece == Piece.None) continue;
+                if (!BoardHelper.IsValidSquare(sq))
+                {
+                    break;
+                }
+
+                if (Math.Abs(BoardHelper.FileOf(sq) - prevFile) > 1)
+                {
+                    break;
+                }
+
+                int piece = board.Squares[sq];
+                if (piece == Piece.None)
+                {
+                    continue;
+                }
+
                 if (Piece.IsColor(piece, byColor)
                     && (Piece.IsType(piece, Piece.Bishop) || Piece.IsType(piece, Piece.Queen)))
+                {
                     return true;
+                }
+
                 break;
             }
         }
@@ -307,10 +425,21 @@ public class MoveGenerator
         foreach (int fileDelta in new[] { -1, 1 })
         {
             int attackFile = BoardHelper.FileOf(square) + fileDelta;
-            if (attackFile < 0 || attackFile > 7) continue;
+            if (attackFile < 0 || attackFile > 7)
+            {
+                continue;
+            }
+
             int attackSq = square + pawnDir * 8 + fileDelta;
-            if (!BoardHelper.IsValidSquare(attackSq)) continue;
-            if (_board.Squares[attackSq] == (byColor | Piece.Pawn)) return true;
+            if (!BoardHelper.IsValidSquare(attackSq))
+            {
+                continue;
+            }
+
+            if (board.Squares[attackSq] == (byColor | Piece.Pawn))
+            {
+                return true;
+            }
         }
 
         // King attacks
@@ -318,14 +447,25 @@ public class MoveGenerator
         foreach (int offset in KingOffsets)
         {
             int sq = square + offset;
-            if (!BoardHelper.IsValidSquare(sq)) continue;
-            if (Math.Abs(BoardHelper.FileOf(sq) - kingFile) > 1) continue;
-            if (_board.Squares[sq] == (byColor | Piece.King)) return true;
+            if (!BoardHelper.IsValidSquare(sq))
+            {
+                continue;
+            }
+
+            if (Math.Abs(BoardHelper.FileOf(sq) - kingFile) > 1)
+            {
+                continue;
+            }
+
+            if (board.Squares[sq] == (byColor | Piece.King))
+            {
+                return true;
+            }
         }
 
         return false;
     }
 
     public bool IsInCheck(Board.Board board, int color) =>
-        IsSquareAttacked(board.KingSquare(color), Piece.OppositeColor(color));
+        IsSquareAttackedOnBoard(board, board.KingSquare(color), Piece.OppositeColor(color));
 }

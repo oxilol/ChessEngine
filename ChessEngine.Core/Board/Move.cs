@@ -1,6 +1,6 @@
 namespace ChessEngine.Core.Board;
-   
-// making it a struct is faster than class (no heap allocation)
+
+// struct is faster than class (no heap allocation)
 public readonly struct Move
 {
     /*
@@ -10,12 +10,12 @@ public readonly struct Move
      */
     private readonly ushort _value;
 
-    public int From       => _value & 0x3F;         // 0b111111
-    public int To         => (_value >> 6) & 0x3F;  // 0b111111 (shitfted 6 bits the the right)
+    public int From => _value & 0x3F;         // 0b111111
+    public int To => (_value >> 6) & 0x3F;  // 0b111111 (shitfted 6 bits the the right)
     public int PromoPiece => (_value >> 12) & 0x7;  // 0b111 (shifted 12 bits to the right)
 
-    public bool IsPromotion  => PromoPiece != Piece.None;    
-    public bool IsNull       => _value == 0;    
+    public bool IsPromotion => PromoPiece != Piece.None;
+    public bool IsNull => _value == 0;
 
     public static readonly Move Null = new(0);
 
@@ -27,6 +27,6 @@ public readonly struct Move
     }
 
     //ex: e2e4, e7e8q
-    public override string ToString() => BoardHelper.SquareName(From) + BoardHelper.SquareName(To) 
+    public override string ToString() => BoardHelper.SquareName(From) + BoardHelper.SquareName(To)
                                          + (IsPromotion ? Piece.ToChar(PromoPiece).ToString().ToLower() : "");
 }

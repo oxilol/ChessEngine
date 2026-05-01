@@ -137,54 +137,50 @@ public class Board
 
     public String ToFEN()
     {
-
         var sb = new System.Text.StringBuilder();
 
-
-        int fileEmptyCounter = 0;
-
-        for (int rank = 8; rank > 0; rank--)
+        for (int rank = 7; rank >= 0; rank--)
         {
-            fileEmptyCounter = 0;
+            int emptyCount = 0;
 
-            for (int file = 8; file > 0; file--)
+            for (int file = 0; file < 8; file++)
             {
-
-                int piece = Squares[(rank * 8) - file];
+                int piece = Squares[BoardHelper.SquareIndex(file, rank)];
 
                 if (piece != 0)
                 {
-                    if (fileEmptyCounter != 0)
+                    if (emptyCount != 0)
                     {
-                        sb.Append(fileEmptyCounter);
-                        fileEmptyCounter = 0;
+                        sb.Append(emptyCount);
+                        emptyCount = 0;
                     }
                     sb.Append(Piece.ToChar(piece));
                 }
                 else
                 {
-                    fileEmptyCounter++;
-                }
-
-                if (file == 1 && fileEmptyCounter != 0)
-                {
-                    sb.Append(fileEmptyCounter);
+                    emptyCount++;
                 }
             }
 
-            if (rank != 1)
+            if (emptyCount != 0)
+            {
+                sb.Append(emptyCount);
+            }
+
+            if (rank != 0)
             {
                 sb.Append("/");
             }
-
         }
 
         sb.Append(ColorToMove == Piece.White ? " w " : " b ");
 
-        sb.Append(CastlingRights[0] ? "K" : "");
-        sb.Append(CastlingRights[1] ? "Q" : "");
-        sb.Append(CastlingRights[2] ? "k" : "");
-        sb.Append(CastlingRights[3] ? "q" : "");
+        string castling = "";
+        if (CastlingRights[0]) castling += "K";
+        if (CastlingRights[1]) castling += "Q";
+        if (CastlingRights[2]) castling += "k";
+        if (CastlingRights[3]) castling += "q";
+        sb.Append(castling.Length > 0 ? castling : "-");
 
         sb.Append(' ');
 
@@ -193,9 +189,7 @@ public class Board
 
         sb.Append($" {HalfMoveClock} {FullMoveNumber}");
 
-
         return sb.ToString();
-
     }
 
     // ─── Make / Unmake ────────────────────────────────────────────────────────

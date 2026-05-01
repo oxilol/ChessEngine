@@ -4,12 +4,16 @@ namespace ChessEngine.Core.Evaluation;
 
 public class Evaluator
 {
+
+    // Main evaluation method, it receives a board and a flag that indicate if endgame has been reached,
+    // it returns an evaluation to determine who is winning this position.
     public int Evaluate(Board.Board board, bool isEndgame)
     {
 
         int whiteEvaluation = 0;
         int blackEvaluation = 0;
 
+        // Count material and piece-square bonuses
         for (int i = 0; i < 64; i++)
         {
             int piece = board.Squares[i];
@@ -31,20 +35,25 @@ public class Evaluator
             }
         }
 
+        //Evaluate pawn structure
         whiteEvaluation += EvaluatePawnStructure(board, Piece.White);
         blackEvaluation += EvaluatePawnStructure(board, Piece.Black);
 
+        //Evaluate king safety
         whiteEvaluation += EvaluateKingSafety(board, Piece.White, isEndgame);
         blackEvaluation += EvaluateKingSafety(board, Piece.Black, isEndgame);
 
+        //Evaluate rook open files and 7th rank
         whiteEvaluation += EvaluateRooks(board, Piece.White);
         blackEvaluation += EvaluateRooks(board, Piece.Black);
 
+        // return position score
         int score = whiteEvaluation - blackEvaluation;
         return board.ColorToMove == Piece.White ? score : -score;
 
     }
 
+    // Endgame detection, if no queen or total material less than 2000
     public bool IsEndgame(Board.Board board)
     {
         bool noQueens = !board.Squares.Any(p => Piece.GetType(p) == Piece.Queen);
@@ -151,7 +160,7 @@ public class Evaluator
 
     private int EvaluateKingSafety(Board.Board board, int color, bool isEndgame)
     {
-        // only matters in opening and middlegame
+        // king safety only matters in opening and middlegame
         if (isEndgame)
         {
             return 0;
@@ -172,7 +181,7 @@ public class Evaluator
                 continue;
             }
 
-            // one square ahead, pawn directly in front
+            // one square ahead, pawn directly in front, strong sheild
             int shieldSq = BoardHelper.SquareIndex(shieldFile, kingRank + direction);
             if (BoardHelper.IsValidSquare(shieldSq)
                 && board.Squares[shieldSq] == (color | Piece.Pawn))
@@ -216,6 +225,7 @@ public class Evaluator
         for (int sq = 0; sq < 64; sq++)
         {
             int piece = board.Squares[sq];
+
             if (piece != (color | Piece.Rook))
             {
                 continue;

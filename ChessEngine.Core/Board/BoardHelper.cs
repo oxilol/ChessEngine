@@ -5,9 +5,7 @@ public static class BoardHelper
     public static int SquareIndex(int file, int rank) => rank * 8 + file;
     public static int FileOf(int square) => square & 0b111;
     public static int RankOf(int square) => square >> 3;
-
     public static bool IsValidSquare(int square) => square >= 0 && square < 64;
-
     public static string SquareName(int square)
     {
         char file = FileOf(square) switch
@@ -37,7 +35,6 @@ public static class BoardHelper
         };
         return $"{file}{rank}";
     }
-
     public static int SquareFromName(string name)
     {
         int file = name[0] switch

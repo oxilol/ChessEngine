@@ -3,6 +3,10 @@
 namespace ChessEngine.Core.Evaluation
 {
     //https://www.chessprogramming.org/Piece-Square_Tables, https://www.chessprogramming.org/Simplified_Evaluation_Function
+
+    // Piece square table are used to biased certain square for each piece type. It allows the engine
+    // to have better positional understanding, for example, it encourages pawns to control the center,
+    // knights in the middle, etc.
     internal class PieceSquareTable
     {
         public static readonly int[] Pawns = {

@@ -2,9 +2,11 @@ using ChessEngine.Core.Board;
 
 namespace ChessEngine.Core.Search;
 
+// Ordering move is useful for alpha-beta pruning because it allows the engine to search the moves
+// that are most promising first like captures and promotions, this way it can cutoff more branches of
+// the tree and search deeper faster and more efficiently !
 public class MoveOrdering
 {
-
     public List<Move> OrderMoves(List<Move> moves, Board.Board board)
     {
         return moves.OrderByDescending(move => ScoreMove(move, board)).ToList();
@@ -41,5 +43,4 @@ public class MoveOrdering
         Piece.Queen => 900,
         _ => 0
     };
-
 }
