@@ -9,6 +9,7 @@ public class ChessBoard : Form
 {
     private const int SquareSize = 80;
     private const int BoardSize = SquareSize * 8;
+    private const int PanelWidth = 200;
 
     private static readonly Color LightSquare = Color.FromArgb(240, 217, 181);
     private static readonly Color DarkSquare = Color.FromArgb(181, 136, 99);
@@ -25,11 +26,19 @@ public class ChessBoard : Form
     private List<int> _highlightSquares = new();
 
     private bool engineThinking = false;
+    private int _playerColor = Piece.White;
+    private bool _flipBoard = false;
+
+    private System.Windows.Forms.Timer _engineTimer;
+    private int _engineTimeMs = 300000; // 5 minutes
+    private Label _lblEngineTimeLabel;
+    private Label _lblEngineTime;
+    private Panel _sidePanel;
 
     public ChessBoard()
     {
         Text = "Chess Engine";
-        ClientSize = new Size(BoardSize, BoardSize);
+        ClientSize = new Size(BoardSize + PanelWidth, BoardSize);
         DoubleBuffered = true;
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
@@ -40,7 +49,138 @@ public class ChessBoard : Form
         _legalMovesCache = _moveGenerator.GenerateLegalMoves(_board);
 
         LoadPieceImages();
+        InitializeUI();
         MouseClick += OnMouseClick;
+    }
+
+    private void InitializeUI()
+    {
+        _sidePanel = new Panel
+        {
+            Location = new Point(BoardSize, 0),
+            Size = new Size(PanelWidth, BoardSize),
+            BackColor = Color.LightGray
+        };
+        Controls.Add(_sidePanel);
+
+        var btnPlayWhite = new Button
+        {
+            Text = "Play White",
+            Location = new Point(20, 20),
+            Size = new Size(160, 40)
+        };
+        btnPlayWhite.Click += (s, e) => StartNewGame(Piece.White);
+        _sidePanel.Controls.Add(btnPlayWhite);
+
+        var btnPlayBlack = new Button
+        {
+            Text = "Play Black",
+            Location = new Point(20, 70),
+            Size = new Size(160, 40)
+        };
+        btnPlayBlack.Click += (s, e) => StartNewGame(Piece.Black);
+        _sidePanel.Controls.Add(btnPlayBlack);
+
+        var btn1min = new Button
+        {
+            Text = "1min",
+            Location = new Point(20, 120),
+            Size = new Size(55, 40)
+        };
+        btn1min.Click += (s, e) => SetEngineTime(1);
+        _sidePanel.Controls.Add(btn1min);
+
+        var btn5min = new Button
+        {
+            Text = "5min",
+            Location = new Point(70, 120),
+            Size = new Size(55, 40)
+        };
+        btn5min.Click += (s, e) => SetEngineTime(5);
+        _sidePanel.Controls.Add(btn5min);
+
+        var btn10min = new Button
+        {
+            Text = "10min",
+            Location = new Point(120, 120),
+            Size = new Size(60, 40)
+        };
+        btn10min.Click += (s, e) => SetEngineTime(10);
+        _sidePanel.Controls.Add(btn10min);
+
+        _lblEngineTimeLabel = new Label
+        {
+            Text = "Engine time : ",
+            Location = new Point(20, 170),
+            Size = new Size(160, 30),
+            Font = new Font("Segoe UI", 11, FontStyle.Bold)
+        };
+        _sidePanel.Controls.Add(_lblEngineTimeLabel);
+
+        _lblEngineTime = new Label
+        {
+            Text = "05:00.0",
+            Location = new Point(20, 200),
+            Size = new Size(160, 30),
+            Font = new Font("Segoe UI", 11, FontStyle.Bold)
+        };
+        _sidePanel.Controls.Add(_lblEngineTime);
+
+        _engineTimer = new System.Windows.Forms.Timer { Interval = 100 };
+        _engineTimer.Tick += EngineTimer_Tick;
+    }
+
+    private void EngineTimer_Tick(object? sender, EventArgs e)
+    {
+        _engineTimeMs -= 100;
+        if (_engineTimeMs <= 0)
+        {
+            _engineTimeMs = 0;
+            _engineTimer.Stop();
+        }
+        TimeSpan ts = TimeSpan.FromMilliseconds(_engineTimeMs);
+
+        _lblEngineTime.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}.{ts.Milliseconds / 100}";
+    }
+
+    private async void StartNewGame(int color)
+    {
+        if (engineThinking)
+        {
+            return;
+        }
+
+        _board.LoadFEN(Core.Board.Board.StartFEN);
+        _playerColor = color;
+        _flipBoard = (color == Piece.Black);
+        _engineTimeMs = 300000;
+        _lblEngineTime.Text = "05:00.0";
+        _legalMovesCache = _moveGenerator.GenerateLegalMoves(_board);
+        Deselect();
+        Invalidate();
+
+        if (color == Piece.Black)
+        {
+            engineThinking = true;
+            _engineTimer.Start();
+            Move engineMove = await Task.Run(() => findEngineBestMove(_board.Clone()));
+            _engineTimer.Stop();
+            MakeEngineMove(engineMove);
+            engineThinking = false;
+            Invalidate();
+        }
+    }
+
+    private async void SetEngineTime(int minutes)
+    {
+        if (engineThinking)
+        {
+            return;
+        }
+
+        _engineTimeMs = minutes * 60 * 1000;
+        TimeSpan ts = TimeSpan.FromMilliseconds(_engineTimeMs);
+        _lblEngineTime.Text = $"{ts.Minutes:D2}:{ts.Seconds:D2}.{ts.Milliseconds / 100}";
     }
 
     private void LoadPieceImages()
@@ -89,6 +229,19 @@ public class ChessBoard : Form
         DrawStatusBar(e.Graphics);
     }
 
+    private void GetDisplayCoordinates(int square, out int x, out int y)
+    {
+        int file = BoardHelper.FileOf(square);
+        int rank = BoardHelper.RankOf(square);
+        if (_flipBoard)
+        {
+            file = 7 - file;
+            rank = 7 - rank;
+        }
+        x = file * SquareSize;
+        y = (7 - rank) * SquareSize;
+    }
+
     private void DrawSquares(Graphics g)
     {
         for (int rank = 0; rank < 8; rank++)
@@ -109,8 +262,7 @@ public class ChessBoard : Form
                     color = Blend(color, Color.FromArgb(255, 255, 255, 0), 0.35f);
                 }
 
-                int x = file * SquareSize;
-                int y = (7 - rank) * SquareSize;
+                GetDisplayCoordinates(square, out int x, out int y);
                 g.FillRectangle(new SolidBrush(color), x, y, SquareSize, SquareSize);
             }
         }
@@ -130,8 +282,7 @@ public class ChessBoard : Form
         {
             int file = BoardHelper.FileOf(sq);
             int rank = BoardHelper.RankOf(sq);
-            int x = file * SquareSize;
-            int y = (7 - rank) * SquareSize;
+            GetDisplayCoordinates(sq, out int x, out int y);
 
             bool isCapture = _board.Squares[sq] != Piece.None;
 
@@ -172,8 +323,7 @@ public class ChessBoard : Form
 
             int file = BoardHelper.FileOf(sq);
             int rank = BoardHelper.RankOf(sq);
-            int x = file * SquareSize;
-            int y = (7 - rank) * SquareSize;
+            GetDisplayCoordinates(sq, out int x, out int y);
             g.DrawImage(bmp, x, y, SquareSize, SquareSize);
         }
     }
@@ -195,8 +345,8 @@ public class ChessBoard : Form
                 Color textColor = isLight ? DarkSquare : LightSquare;
                 var brush = new SolidBrush(textColor);
 
-                int x = file * SquareSize;
-                int y = (7 - rank) * SquareSize;
+                int x = 0, y = 0; // The variables will be updated by GetDisplayCoordinates
+                GetDisplayCoordinates(square, out x, out y);
 
                 g.DrawString(
                     square.ToString(),
@@ -221,20 +371,28 @@ public class ChessBoard : Form
         var font = new Font("Segoe UI", 9, FontStyle.Bold);
         string[] files = { "a", "b", "c", "d", "e", "f", "g", "h" };
 
-        for (int i = 0; i < 8; i++)
+        for (int file = 0; file < 8; file++)
         {
-            bool isLight = i % 2 != 0;
+            int square = BoardHelper.SquareIndex(file, 0); // rank 0
+            bool isLight = (0 + file) % 2 != 0;
             var brush = new SolidBrush(isLight ? DarkSquare : LightSquare);
 
-            g.DrawString(files[i], font, brush,
-                i * SquareSize + SquareSize - 14,
+            int displayFile = _flipBoard ? 7 - file : file;
+            g.DrawString(files[file], font, brush,
+                displayFile * SquareSize + SquareSize - 14,
                 BoardSize - 18);
+        }
 
-            isLight = i % 2 == 0;
-            brush = new SolidBrush(isLight ? DarkSquare : LightSquare);
-            g.DrawString((i + 1).ToString(), font, brush,
+        for (int rank = 0; rank < 8; rank++)
+        {
+            int square = BoardHelper.SquareIndex(0, rank); // file 0
+            bool isLight = (rank + 0) % 2 != 0;
+            var brush = new SolidBrush(isLight ? DarkSquare : LightSquare);
+
+            int displayRank = _flipBoard ? rank : 7 - rank;
+            g.DrawString((rank + 1).ToString(), font, brush,
                 3,
-                (7 - i) * SquareSize + 3);
+                displayRank * SquareSize + 3);
         }
     }
 
@@ -271,14 +429,17 @@ public class ChessBoard : Form
         if (!engineThinking)
         {
 
-            int file = e.X / SquareSize;
-            int rank = 7 - (e.Y / SquareSize);
-            int square = BoardHelper.SquareIndex(file, rank);
+            int displayFile = e.X / SquareSize;
+            int displayRank = 7 - (e.Y / SquareSize);
 
-            if (file < 0 || file > 7 || rank < 0 || rank > 7)
+            if (displayFile < 0 || displayFile > 7 || displayRank < 0 || displayRank > 7)
             {
                 return;
             }
+
+            int file = _flipBoard ? 7 - displayFile : displayFile;
+            int rank = _flipBoard ? 7 - displayRank : displayRank;
+            int square = BoardHelper.SquareIndex(file, rank);
 
             if (_legalMovesCache.Count == 0)
             {
@@ -298,12 +459,14 @@ public class ChessBoard : Form
                 else if (_highlightSquares.Contains(square))
                 {
                     MakeMove(square);
+                    Invalidate();
 
-                    if (!isGameOver())
+                    if (!isGameOver() && _board.ColorToMove != _playerColor)
                     {
                         engineThinking = true;
+                        _engineTimer.Start();
                         Move engineMove = await Task.Run(() => findEngineBestMove(_board.Clone()));
-
+                        _engineTimer.Stop();
                         MakeEngineMove(engineMove);
                         engineThinking = false;
                     }
@@ -339,15 +502,45 @@ public class ChessBoard : Form
 
     private void MakeMove(int toSquare)
     {
-        Move move = _legalMovesCache
+        var moves = _legalMovesCache
             .Where(m => m.From == _selectedSquare && m.To == toSquare)
-            .OrderByDescending(m => m.PromoPiece)
-            .First();
+            .ToList();
+
+        Move move = moves.First();
+
+        if (moves.Count > 1 && moves.Any(m => m.IsPromotion))
+        {
+            bool isWhite = _board.ColorToMove == Piece.White;
+            string colorPrefix = isWhite ? "w" : "b";
+            var form = new PromotionForm(
+                _pieceImages[$"{colorPrefix}Q"],
+                _pieceImages[$"{colorPrefix}R"],
+                _pieceImages[$"{colorPrefix}B"],
+                _pieceImages[$"{colorPrefix}N"],
+                isWhite
+            );
+
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                int promoPiece = Piece.GetType(form.SelectedPiece);
+                move = moves.FirstOrDefault(m => m.PromoPiece == promoPiece);
+                if (move.IsNull)
+                {
+                    move = moves.First();
+                }
+            }
+            else
+            {
+                // default to queen if canceled
+                move = moves.OrderByDescending(m => m.PromoPiece).First();
+            }
+        }
 
         _board.MakeMove(move);
         _legalMovesCache = _moveGenerator.GenerateLegalMoves(_board);
         _selectedSquare = -1;
         _highlightSquares = new();
+        _highlightSquares.Add(toSquare);
     }
 
     private void MakeEngineMove(Move move)
@@ -356,14 +549,17 @@ public class ChessBoard : Form
         _legalMovesCache = _moveGenerator.GenerateLegalMoves(_board);
         _selectedSquare = -1;
         _highlightSquares = new();
+        _highlightSquares.Add(move.To);
     }
 
     private Move findEngineBestMove(Board board)
     {
-
         Searcher searcher = new(board);
 
-        Move move = searcher.FindBestMove(5);
+        long timeBudget = Math.Max(100, _engineTimeMs / 20);
+        long hardLimit = Math.Max(200, _engineTimeMs / 5);
+
+        Move move = searcher.FindBestMoveTimed(timeBudget, hardLimit);
         Console.Error.WriteLine($"Nodes searched: {searcher.NodesSearched}");
 
         return move;
@@ -379,11 +575,6 @@ public class ChessBoard : Form
     {
         _selectedSquare = -1;
         _highlightSquares = new();
-    }
-
-    private void InitializeComponent()
-    {
-
     }
 
     private static Color Blend(Color c1, Color c2, float ratio) =>
