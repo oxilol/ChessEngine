@@ -12,10 +12,6 @@ Testé contre Stockfish avec un contrôle du temps de 5min + 1s d'incrément (po
 
 Résultat sur 40 parties :
 
-- vs Stockfish @ 2100 UCI elo :  24W - 12L - 4D  [65%]
-- vs Stockfish @ 2150 UCI elo :  
-- vs Stockfish @ 2200 UCI elo :  15W - 20L - 5D  [43.75%]
-
 | Adversaire                 | Parties | Victoires | Défaites | Nulles | Score  |
 |----------------------------|---------|-----------|----------|--------|--------|
 | Stockfish @ 2100 UCI Elo   | 40      | 24        | 12       | 4      | 65%    |
